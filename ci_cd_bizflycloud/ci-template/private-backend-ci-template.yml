@@ -1,0 +1,51 @@
+################# Deploy private  ####################################
+
+deploy_staging_private:
+  stage: deploy
+  script:
+    - DeployV2
+  retry: 2
+  interruptible: true
+  resource_group: staging
+  tags:
+    - devops-runner-prod
+  only:
+    - staging
+
+deploy_prod_private:
+  stage: deploy
+  script:
+    - DeployV2
+  retry: 2
+  interruptible: true
+  resource_group: production
+  tags:
+    - devops-runner-prod
+  only:
+    - master
+    - product
+    - main
+  when: manual
+
+################################ Restart #####################################
+restart_private-staging:
+  stage: restart
+  script:
+    - Restart
+  tags:
+    - devops-runner-prod
+  only:
+    - staging
+  when: manual
+
+restart_private-prod:
+  stage: restart
+  script:
+    - Restart
+  tags:
+    - devops-runner-prod
+  only:
+    - master
+    - product
+    - main
+  when: manual

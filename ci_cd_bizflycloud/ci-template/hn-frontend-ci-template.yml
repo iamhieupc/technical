@@ -1,0 +1,159 @@
+image: hub.paas.vn/devopsteam/gitlab-runner:latest
+
+variables:
+  REGISTRY: "hub.paas.vn"
+  HUB_USERNAME: "gitlab-runner"
+  HUB_NAMESPACE: "devteam"
+  GITOPS_USER: "gitops-bot"
+  GITOPS_URL: "https://$GITOPS_USER:$GITOPS_TOKEN@git.paas.vn/devops-team/kubernetes/charts.git"
+  IMAGE: $CI_PROJECT_NAME
+  PREFIX_APPLICATION: "frontend"
+before_script:
+  - |
+    [[ "${DEBUG:-0}" -eq 0 ]] || set -x
+    wget --header "PRIVATE-TOKEN: $CI_TEMPLATE_TOKEN" "https://git.paas.vn/api/v4/projects/2003/repository/files/ci-function.sh/raw?ref=master" -O ci-function.sh && . ci-function.sh && rm ci-function.sh
+  - GetValuesByBranch
+  - export APPLICATION=$PREFIX_APPLICATION/$IMAGE
+
+stages:
+  - analysis
+  - build
+  - test
+  - deploy
+  - deploy_without_cache
+  - notify
+
+################## Build image for all enviroment ###################
+## Build image for HN
+# build_hn_dev:
+#   stage: build
+#   script:
+#     - cat $ENV_HN_DEVELOPMENT > .env
+#     - BuildFrontendWithCache
+#   interruptible: true
+#   tags:
+#     - devops-runner-prod
+#   only:
+#     - develop
+
+build_hn_staging:
+  stage: build
+  script:
+    - cat $ENV_HN_STAGING > .env
+    - BuildFrontendWithCache
+  interruptible: true
+  tags:
+    - devops-runner-prod
+  only:
+    - staging
+    - staging2
+    - /^test/
+
+build_hn_prod:
+  stage: build
+  script:
+    - cat $ENV_HN_PRODUCTION > .env
+    - BuildFrontendWithCache
+  interruptible: true
+  tags:
+    - devops-runner-prod
+  only:
+    - master
+    - production
+
+################# Deploy HN  ####################################
+
+# deploy_hn_dev:
+#   stage: deploy
+#   script:
+#     - DeployV2
+#   retry: 2
+#   interruptible: true
+#   resource_group: development
+#   tags:
+#     - devops-runner-prod
+#   only:
+#     - develop
+
+deploy_hn_staging:
+  stage: deploy
+  script:
+    - DeployV2
+  retry: 2
+  interruptible: true
+  resource_group: staging
+  tags:
+    - devops-runner-prod
+  only:
+    - staging
+    - staging2
+    - /^test/
+
+deploy_hn_prod:
+  stage: deploy
+  script:
+    - DeployV2
+  retry: 2
+  interruptible: true
+  resource_group: production
+  tags:
+    - devops-runner-prod
+  only:
+    - master
+    - production
+  when: manual
+
+################ Deploy HN without cache ##########################
+# deploy_hn_dev_without_cache:
+#   stage: deploy_without_cache
+#   script:
+#     - cat $ENV_HN_DEVELOPMENT > .env
+#     - BuildFrontendWithoutCache "--build-arg BUILD_ENV=build"
+#     - DeployV2
+#   interruptible: true
+#   resource_group: development
+#   tags:
+#     - devops-runner-prod
+#   only:
+#     - develop
+#   when: manual
+
+deploy_hn_staging_without_cache:
+  stage: deploy_without_cache
+  script:
+    - cat $ENV_HN_STAGING > .env
+    - BuildFrontendWithoutCache "--build-arg BUILD_ENV=build"
+    - DeployV2
+  interruptible: true
+  resource_group: staging
+  tags:
+    - devops-runner-prod
+  only:
+    - staging
+    - staging2
+    - /^test/
+  when: manual
+
+deploy_hn_prod_without_cache:
+  stage: deploy_without_cache
+  script:
+    - cat $ENV_HN_PRODUCTION > .env
+    - BuildFrontendWithoutCache "--build-arg BUILD_ENV=build"
+    - DeployV2
+  interruptible: true
+  resource_group: production
+  tags:
+    - devops-runner-prod
+  only:
+    - master
+    - production
+  when: manual
+
+################################################## Notify ###############################
+notify:
+  stage: notify
+  script:
+    - Notify
+  tags:
+    - devops-runner-prod
+  when: on_failure

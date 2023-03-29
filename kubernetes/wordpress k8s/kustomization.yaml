@@ -1,0 +1,11 @@
+secretGenerator:
+- name: mysql-pass
+  literals:
+  - password=123456
+resources:
+  - mysql-backend-pvc.yaml
+  - mysql-backend-svc.yaml
+  - mysql-backend-deployment.yaml
+  - wordpress-frontend-pvc.yaml
+  - wordpress-frontend-svc.yaml
+  - wordpress-frontend-deployment.yaml

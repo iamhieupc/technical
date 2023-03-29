@@ -1,0 +1,3 @@
+include:
+  - project: 'devops-team/gitops/ci-template'
+    file: 'hn-backend-ci-template.yml'
