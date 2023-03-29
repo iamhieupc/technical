@@ -9,10 +9,12 @@ Một stream platform sẽ có 3 khả năng chính:
 image.png
 
 ## Cấu trúc của Kafka
-<img src="https://viblo.asia/p/kafka-la-gi-gDVK2Q7A5Lj">
+![image](https://user-images.githubusercontent.com/72189639/228626137-e6a7df3d-ae7d-4793-8d7e-ab900e6c473b.png)
+
 Mô hình cấu trúc đơn giản
 
-<img src="https://viblo.asia/p/kafka-la-gi-gDVK2Q7A5Lj">
+![image](https://user-images.githubusercontent.com/72189639/228626228-81f9e132-fbe7-4145-ad68-d429346d2a66.png)
+
 Mô hình cấu trúc chi tiết
 
 <b>Producer</b>: Một producer có thể là bất kì ứng dụng nào có chức năng publish message vào một topic.
