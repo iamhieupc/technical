@@ -1,6 +1,9 @@
 ## Giới thiệu
 Docker là su thế mới của công nghệ. Docker chạy trong một không gian độc lập, Nó nhệ hơn so với chạy bằng Vms vì nó không có tài nguyên vật lý hoặc không yêu cầu OS phải được install.
 
+![image](https://user-images.githubusercontent.com/72189639/228713851-dd02383c-3413-43cc-9c82-06b9f2a460aa.png)
+
+
 ## Dockerd
 Dockerd là 1 high-level container runtime, giống như kiểu container manager, nó là nền quản lý vòng đời container trên 1 máy chủ đơn: create, start, ..
 
