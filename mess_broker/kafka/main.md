@@ -50,3 +50,7 @@ Assume we have a Kafka cluster consisting of three brokers (broker1, broker2, br
 7, Consumers can subscribe to the "my_topic" topic and begin consuming messages from the partitions assigned to them. The consumer's offset information will be stored in Zookeeper, allowing it to resume consuming from where it left off in case of failure or restart.
 
 In this example, we can see how Zookeeper is used to manage and coordinate the Kafka cluster, including creating topics, assigning partitions to brokers, and tracking the state of the Kafka brokers and consumers.
+
+
+### Kafka Visualisation
+https://softwaremill.com/kafka-visualisation/
