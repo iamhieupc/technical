@@ -10,6 +10,9 @@ Các container images được lưu và pull về từ container registeries nó
 ## Task definition
 Task definition là một text file (json format). Nó sẽ mô tả 1 hoặc nhiều container (tối đa là 10) để hình thành nên ứng dụng của bạn. Task definition sẽ chỉ ra một vài parameter cho ứng dụng như container nào sẽ được sử dụng, launch type sẽ được dùng, những port nào sẽ được mở cho ứng dụng và data volume gì sẽ được với containers trong task.
 
+## Cluster
+
+
 ## Lab deploy app to ECS
 
 1, Create repo in ECR

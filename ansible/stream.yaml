@@ -1,0 +1,622 @@
+---
+# Source: livestream-api/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: livestream-livestream-api
+  labels:
+    helm.sh/chart: livestream-api-0.1.0
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: livestream-api/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: livestream-configmap
+data:
+  vault-agent-config.hcl: |
+    exit_after_auth = true
+    pid_file = "/home/vault/pidfile"
+    auto_auth {
+      method "kubernetes" {
+        mount_path = "auth/kubernetes"
+        config = {
+          role = "admin"
+        }
+      }
+      sink "file" {
+        config = {
+          path = "/home/vault/.vault-token"
+        }
+      }
+    }
+  
+    template {
+      destination = "/etc/secrets/.env"
+      contents = <<EOT
+      {{- with secret "livestream-api/data/staging" }}
+        {{ .Data.data.config }}
+      {{ end }}
+      EOT
+    }
+---
+# Source: livestream-api/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: livestream-livestream-api
+  labels:
+    helm.sh/chart: livestream-api-0.1.0
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: NodePort
+  ports:
+    - port: 8000
+      targetPort: http
+      protocol: TCP
+      name: http
+      #nodePort: 32200
+      #nodePort: 32712
+      nodePort: 32712
+
+  selector:
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+---
+# Source: livestream-api/templates/deployment-publish-worker.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livestream-livestream-api-publish-worker
+  labels:
+    helm.sh/chart: livestream-api-0.1.0
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm-publish-worker
+    app: livestream-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: livestream-api
+      app.kubernetes.io/instance: livestream-publish-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: livestream-api
+        app.kubernetes.io/instance: livestream-publish-worker
+    spec:
+      imagePullSecrets:
+        - name: registry
+      serviceAccountName: livestream-livestream-api
+      securityContext:
+        {}
+      serviceAccountName: vault-auth
+      initContainers:
+      - args:
+        - agent
+        - -config=/etc/vault/vault-agent-config.hcl
+        - -log-level=debug
+        env:
+        - name: VAULT_ADDR
+          value: http://10.5.68.226
+        image: hub.paas.vn/public/vault
+        name: vault-agent
+        volumeMounts:
+        - mountPath: /etc/vault
+          name: livestream-vault
+        - mountPath: /etc/secrets
+          name: livestream-config
+
+      containers:
+        - name: livestream-api-publish-worker
+          securityContext:
+            {}
+          image: "hub.paas.vn/devteam/livestream-api:s122543_523cf753"
+          imagePullPolicy: IfNotPresent
+          command:
+          - poetry
+          - run
+          - python3
+          - worker.py
+          - publish
+          
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 700m
+              memory: 800Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          volumeMounts:
+            - mountPath: /app/.env
+              name: livestream-config
+              subPath: .env
+           
+
+      volumes:
+        - configMap:
+            items:
+            - key: vault-agent-config.hcl
+              path: vault-agent-config.hcl
+            name: livestream-configmap
+          name: livestream-vault
+        - emptyDir: {}
+          name: livestream-config
+---
+# Source: livestream-api/templates/deployment-record-worker.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livestream-livestream-api-record-worker
+  labels:
+    helm.sh/chart: livestream-api-0.1.0
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm-record-worker
+    app: livestream-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: livestream-api
+      app.kubernetes.io/instance: livestream-record-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: livestream-api
+        app.kubernetes.io/instance: livestream-record-worker
+    spec:
+      imagePullSecrets:
+        - name: registry
+      serviceAccountName: livestream-livestream-api
+      securityContext:
+        {}
+      serviceAccountName: vault-auth
+      initContainers:
+      - args:
+        - agent
+        - -config=/etc/vault/vault-agent-config.hcl
+        - -log-level=debug
+        env:
+        - name: VAULT_ADDR
+          value: http://10.5.68.226
+        image: hub.paas.vn/public/vault
+        name: vault-agent
+        volumeMounts:
+        - mountPath: /etc/vault
+          name: livestream-vault
+        - mountPath: /etc/secrets
+          name: livestream-config
+
+      containers:
+        - name: livestream-api-record-worker
+          securityContext:
+            {}
+          image: "hub.paas.vn/devteam/livestream-api:s122543_523cf753"
+          imagePullPolicy: IfNotPresent
+          command:
+          - poetry
+          - run
+          - python3
+          - worker.py
+          - record
+          
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 700m
+              memory: 800Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          volumeMounts:
+            - mountPath: /app/.env
+              name: livestream-config
+              subPath: .env
+           
+
+      volumes:
+        - configMap:
+            items:
+            - key: vault-agent-config.hcl
+              path: vault-agent-config.hcl
+            name: livestream-configmap
+          name: livestream-vault
+        - emptyDir: {}
+          name: livestream-config
+---
+# Source: livestream-api/templates/deployment-worker-live-rtmp-start-worker.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livestream-livestream-api-rtmp-start-worker
+  labels:
+    helm.sh/chart: livestream-api-0.1.0
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm-rtmp-start-worker
+    app: livestream-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: livestream-api
+      app.kubernetes.io/instance: livestream-rtmp-start-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: livestream-api
+        app.kubernetes.io/instance: livestream-rtmp-start-worker
+    spec:
+      imagePullSecrets:
+        - name: registry
+      serviceAccountName: livestream-livestream-api
+      securityContext:
+        {}
+      serviceAccountName: vault-auth
+      initContainers:
+      - args:
+        - agent
+        - -config=/etc/vault/vault-agent-config.hcl
+        - -log-level=debug
+        env:
+        - name: VAULT_ADDR
+          value: http://10.5.68.226
+        image: hub.paas.vn/public/vault
+        name: vault-agent
+        volumeMounts:
+        - mountPath: /etc/vault
+          name: livestream-vault
+        - mountPath: /etc/secrets
+          name: livestream-config
+
+      containers:
+        - name: livestream-api-rtmp-start-worker
+          securityContext:
+            {}
+          image: "hub.paas.vn/devteam/livestream-api:s122543_523cf753"
+          imagePullPolicy: IfNotPresent
+          command:
+          - poetry
+          - run
+          - python3
+          - worker.py
+          - rtmp-start
+          
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 700m
+              memory: 800Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          volumeMounts:
+            - mountPath: /app/.env
+              name: livestream-config
+              subPath: .env
+           
+
+      volumes:
+        - configMap:
+            items:
+            - key: vault-agent-config.hcl
+              path: vault-agent-config.hcl
+            name: livestream-configmap
+          name: livestream-vault
+        - emptyDir: {}
+          name: livestream-config
+---
+# Source: livestream-api/templates/deployment-worker-live-rtmp-stop-worker.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livestream-livestream-api-rtmp-stop-worker
+  labels:
+    helm.sh/chart: livestream-api-0.1.0
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm-rtmp-stop-worker
+    app: livestream-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: livestream-api
+      app.kubernetes.io/instance: livestream-rtmp-stop-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: livestream-api
+        app.kubernetes.io/instance: livestream-rtmp-stop-worker
+    spec:
+      imagePullSecrets:
+        - name: registry
+      serviceAccountName: livestream-livestream-api
+      securityContext:
+        {}
+      serviceAccountName: vault-auth
+      initContainers:
+      - args:
+        - agent
+        - -config=/etc/vault/vault-agent-config.hcl
+        - -log-level=debug
+        env:
+        - name: VAULT_ADDR
+          value: http://10.5.68.226
+        image: hub.paas.vn/public/vault
+        name: vault-agent
+        volumeMounts:
+        - mountPath: /etc/vault
+          name: livestream-vault
+        - mountPath: /etc/secrets
+          name: livestream-config
+
+      containers:
+        - name: livestream-api-rtmp-stop-worker
+          securityContext:
+            {}
+          image: "hub.paas.vn/devteam/livestream-api:s122543_523cf753"
+          imagePullPolicy: IfNotPresent
+          command:
+          - poetry
+          - run
+          - python3
+          - worker.py
+          - rtmp-stop
+          
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 700m
+              memory: 800Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          volumeMounts:
+            - mountPath: /app/.env
+              name: livestream-config
+              subPath: .env
+           
+
+      volumes:
+        - configMap:
+            items:
+            - key: vault-agent-config.hcl
+              path: vault-agent-config.hcl
+            name: livestream-configmap
+          name: livestream-vault
+        - emptyDir: {}
+          name: livestream-config
+---
+# Source: livestream-api/templates/deployment-worker-preview.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livestream-livestream-api-worker-preview
+  labels:
+    helm.sh/chart: livestream-api-0.1.0
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm-worker-preview
+    app: livestream-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: livestream-api
+      app.kubernetes.io/instance: livestream-worker-preview
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: livestream-api
+        app.kubernetes.io/instance: livestream-worker-preview
+    spec:
+      imagePullSecrets:
+        - name: registry
+      serviceAccountName: livestream-livestream-api
+      securityContext:
+        {}
+      serviceAccountName: vault-auth
+      initContainers:
+      - args:
+        - agent
+        - -config=/etc/vault/vault-agent-config.hcl
+        - -log-level=debug
+        env:
+        - name: VAULT_ADDR
+          value: http://10.5.68.226
+        image: hub.paas.vn/public/vault
+        name: vault-agent
+        volumeMounts:
+        - mountPath: /etc/vault
+          name: livestream-vault
+        - mountPath: /etc/secrets
+          name: livestream-config
+
+      containers:
+        - name: livestream-api-worker-preview
+          securityContext:
+            {}
+          image: "hub.paas.vn/devteam/livestream-api:s122543_523cf753"
+          imagePullPolicy: IfNotPresent
+          command:
+          - poetry
+          - run
+          - python3
+          - worker.py
+          - preview
+          
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 700m
+              memory: 800Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          volumeMounts:
+            - mountPath: /app/.env
+              name: livestream-config
+              subPath: .env
+           
+
+      volumes:
+        - configMap:
+            items:
+            - key: vault-agent-config.hcl
+              path: vault-agent-config.hcl
+            name: livestream-configmap
+          name: livestream-vault
+        - emptyDir: {}
+          name: livestream-config
+---
+# Source: livestream-api/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livestream-livestream-api
+  labels:
+    helm.sh/chart: livestream-api-0.1.0
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+    app: livestream-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: livestream-api
+      app.kubernetes.io/instance: livestream
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: livestream-api
+        app.kubernetes.io/instance: livestream
+    spec:
+      imagePullSecrets:
+        - name: registry
+      serviceAccountName: livestream-livestream-api
+      securityContext:
+        {}
+      serviceAccountName: vault-auth
+      initContainers:
+      - args:
+        - agent
+        - -config=/etc/vault/vault-agent-config.hcl
+        - -log-level=debug
+        env:
+        - name: VAULT_ADDR
+          value: http://10.5.68.226
+        image: hub.paas.vn/public/vault
+        name: vault-agent
+        volumeMounts:
+        - mountPath: /etc/vault
+          name: livestream-vault
+        - mountPath: /etc/secrets
+          name: livestream-config
+
+      containers:
+        - name: livestream-api
+          securityContext:
+            {}
+          image: "hub.paas.vn/devteam/livestream-api:s122543_523cf753"
+          imagePullPolicy: IfNotPresent
+          command:
+          - poetry
+          - run
+          - uvicorn
+          - app.main:app
+          - --host=0.0.0.0
+          
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 700m
+              memory: 800Mi
+            requests:
+              cpu: 200m
+              memory: 200Mi
+          volumeMounts:
+            - mountPath: /app/.env
+              name: livestream-config
+              subPath: .env
+           
+          livenessProbe:
+            httpGet:
+              path: health_check
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: health_check
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+
+      volumes:
+        - configMap:
+            items:
+            - key: vault-agent-config.hcl
+              path: vault-agent-config.hcl
+            name: livestream-configmap
+          name: livestream-vault
+        - emptyDir: {}
+          name: livestream-config
+---
+# Source: livestream-api/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: livestream-livestream-api
+  labels:
+    helm.sh/chart: livestream-api-0.1.0
+    app.kubernetes.io/name: livestream-api
+    app.kubernetes.io/instance: livestream
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  rules:
+    - host: "livestream-api.staging.bizflycloud.vn"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: livestream-livestream-api
+                port:
+                  number: 8000
