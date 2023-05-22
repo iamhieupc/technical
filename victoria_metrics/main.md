@@ -26,7 +26,7 @@ Các cổng có thể được thay đổi bằng cách đặt -httpListenAddr t
     List ra các IP Node đi ra ?
     Sử dụng Protocol gì để đẩy ?  exp: influxdb or prometheus
 
-write with prometheus protocol: http://127.0.0.1:8480/insert/2202/prometheus/api/v1/write 
+write with prometheus protocol: http://10.3.54.126:8480/insert/2202/prometheus/api/v1/write 
 write with influxdb protocol: http://127.0.0.1:8480/insert/2202/write 
 ## Cài đặt telegraf để thu thập metric trong vmagent và bắn log đến cụm victoria_metrics
 
@@ -48,12 +48,12 @@ select 8481 =>> http://service_host:10016/write    =>> telegraf
 
 Get all labels
 ```
-curl -X GET http://localhost:8481/select/2202/prometheus/api/v1/labels | jq
+curl -X GET http://10.3.54.126:8481/select/2202/prometheus/api/v1/labels | jq
 ```
 
 Insert value
 ```
-curl 'http://10.3.54.126:10017/write?db=lms2' -u 'service2:ERm9remL9jVry31WBW5mpydZ' -d 'measurement,tag1=value1,tag2=value2 field1=123,field2=1.23'
+curl 'http://45.124.93.254:10008/write?monitor=test-metrics' -u 'test-metrics:dGVzdC1tZXRyaWNzCg==' -d 'measurement,tag1=value1,tag2=value2 field1=123,field2=1.23'
 ```
 
 select 
