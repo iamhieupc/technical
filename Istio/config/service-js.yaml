@@ -1,0 +1,73 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: service-js
+  labels:
+    app: service-js
+spec:
+  selector:
+    app: service-js
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-js-v1
+spec:
+  selector:
+    matchLabels:
+      app: service-js
+      version: v1
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: service-js
+        version: v1
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: service-js
+        image: hustchihieu/customer-service:v1
+        ports:
+        - containerPort: 3001
+        resources:
+          requests:
+            cpu: 50m
+            memory: 50Mi
+          limits:
+            cpu: 100m
+            memory: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-js-v2
+spec:
+  selector:
+    matchLabels:
+      app: service-js
+      version: v2
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: service-js
+        version: v2
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: service-js
+        image: hustchihieu/customer-service:v2
+        ports:
+        - containerPort: 3001
+        resources:
+          requests:
+            cpu: 50m
+            memory: 50Mi
+          limits:
+            cpu: 100m
+            memory: 100Mi
