@@ -35,7 +35,7 @@ sudo mysql_secure_installation
 
 Create user
 ```
-CREATE USER 'username'@'host' IDENTIFIED WITH mysql_native_password BY 'password';
+CREATE USER 'username'@'10.3.53.166' IDENTIFIED WITH mysql_native_password BY 'password';
 ```
 
 =>> host: hostname của client
@@ -62,4 +62,20 @@ SELECT User, Host, Password FROM mysql.user;
 Revoke privileges user
 ```
 REVOKE SELECT ON *.* FROM 'sally'@'localhost';
+```
+
+dump database
+```
+mysqldump -h 10.5.71.57 -u quandc -pQWRtaW4xMjNACg== kuma_db > kuma_old.sql
+```
+
+restore database
+```
+mysql –h [hostname] –u [username] –p[password] [database_name] < [dump_file.sql]
+```
+
+fix lỗi khi restore database mysql: ERROR 1273 (HY000) at line 25: Unknown collation: 'utf8mb4_0900_ai_ci'
+```
+Lệnh 1: sed -i 's/utf8mb4_0900_ai_ci/utf8_general_ci/g' backup.sql  
+Lệnh 2: sed -i 's/CHARSET=utf8mb4/CHARSET=utf8/g' backup.sql  
 ```
